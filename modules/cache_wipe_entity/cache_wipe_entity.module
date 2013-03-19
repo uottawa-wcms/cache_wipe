@@ -1,0 +1,14 @@
+<?php
+
+function cache_wipe_entity_entity_update($entity, $type) {
+  if (variable_get('cache_wipe_entity_' . $type, TRUE)) {
+    $info = entity_get_info($type);
+    $id = $entity->{$info['entity keys']['id']};
+    $bundle = NULL;
+    if (!empty($info['entity keys']['bundle'])) {
+      $bundle = $entity->{$info['entity keys']['bundle']};
+    }
+    _cache_wipe_queue_call($entity, $entity->{$info['entity keys']['id']},
+        $type, $bundle);
+  }
+}

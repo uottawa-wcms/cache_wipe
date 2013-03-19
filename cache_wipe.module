@@ -1,0 +1,70 @@
+<?php
+
+define('CACHE_WIPE_SINGLE', 'single');
+define('CACHE_WIPE_ALL', 'everything');
+
+function cache_wipe_permission() {
+  return array(
+    'cache wipe admin' => array(
+      'title' => t('Administer settings'),
+      'description' => t('Control settings around how external caches are managed'),
+      'restrict access' => TRUE,
+    ),
+  );
+}
+
+function cache_wipe_flush_caches() {
+  if (variable_get('cache_wipe_on_clear', FALSE)) {
+    _cache_wipe_queue_everything();
+  }
+  return array();
+}
+
+function cache_wipe_menu() {
+  return array(
+    'admin/config/system/external_cache' => array(
+      'title' => 'External Cache Control',
+      'description' => 'Configure how external caches are cleared',
+      'access arguments' => array('cache wipe admin'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('cache_wipe_admin_form'),
+      'file' => 'cache_wipe.admin.inc'
+    ),
+    'admin/config/system/external_cache/settings' => array(
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+      'title' => 'Global Settings',
+      'weight' => -100,
+    ),
+  );
+}
+
+function _cache_wipe_queue_call($object, $id, $type, $subtype = NULL, $priority = 0) {
+  $priority = filter_var($priority, FILTER_SANITIZE_NUMBER_INT);
+  $queue = UniqueQueue::get('cache_wipe_objects');
+  return $queue->createItem(array(
+    'mode' => CACHE_WIPE_SINGLE,
+    'type' => $type,
+    'subtype' => $subtype,
+    'id' => $id,
+    'object' => $object,
+  ), $type . $subtype . $id, $priority);
+}
+
+function _cache_wipe_queue_everything($priority = 10000) {
+  $priority = filter_var($priority, FILTER_SANITIZE_NUMBER_INT);
+  $queue = UniqueQueue::get('cache_wipe_objects');
+  return $queue->createItem(array(
+    'mode' => CACHE_WIPE_ALL,
+  ));
+}
+
+function cache_wipe_cron() {
+  $last_execution = variable_get('cache_wipe_last_execute', 0);
+  $delay = variable_get('cache_wipe_delay', 3600);
+  if ($last_execution + $delay <= time()) {
+    module_load_include('inc', 'cache_wipe');
+    _cache_wipe_run_queue();
+    variable_set('cache_wipe_last_execute', time());
+  }
+
+}

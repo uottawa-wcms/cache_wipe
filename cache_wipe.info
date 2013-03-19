@@ -1,0 +1,7 @@
+name = Cache Wipe
+description = "Allows for remote caches to be wiped."
+core = 7.x
+package = External Cache
+
+dependencies[] = path_usage
+dependencies[] = unique_queue

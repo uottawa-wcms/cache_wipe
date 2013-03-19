@@ -1,0 +1,6 @@
+name = Cache Wipe Entity
+description = "Provides cache wipe integration for entities"
+core = 7.x
+package = External Cache
+
+dependencies[] = cache_wipe
