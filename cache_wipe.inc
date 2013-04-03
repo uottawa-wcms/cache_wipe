@@ -76,6 +76,8 @@ function _cache_wipe_for_batch(&$context) {
 }
 
 function _cache_wipe_everything() {
+  // move to system hook
+  db_truncate('cache_page')->execute();
   $modules = module_implements('cache_wipe_all');
   foreach ($modules as $module) {
     $hook = $module . '_cache_wipe_all';
@@ -87,12 +89,29 @@ function _cache_wipe_everything() {
 }
 
 function _cache_wipe_process_item($item) {
+  global $base_url;
   $paths = path_usage_find_paths(
       $item['object'],
       $item['id'],
       $item['type'],
       $item['subtype']
   );
+  $full_paths = array();
+  foreach ($paths as $path) {
+    if (substr($path, 0, 1) == '/') {
+      $full_paths[] = $base_url . $path;
+    } elseif (strpos($path, '://') === FALSE) {
+      $full_paths[] = $base_url . '/' . $path;
+    } else {
+      $full_paths[] = $path;
+      $full_paths[] = str_replace('https://', 'http://', $path);
+    }
+  }
+drupal_set_message('clearing paths: ' . implode('-----', $full_paths));
+  db_delete('cache_page')
+      ->condition('cid', $full_paths, 'IN')
+      ->execute();
+  drupal_set_message('wiping page cache');
   $modules = module_implements('cache_wipe');
   foreach ($modules as $module) {
     $hook = $module . '_cache_wipe';
